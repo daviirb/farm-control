@@ -49,15 +49,23 @@ bool updateTimeFromJSON(String payload) {
         long unixtime = doc["unixtime"];
         Serial.printf("⏱ Unixtime recebido: %ld\n", unixtime);
 
+        // Ajusta fuso horário para Brasil (UTC-3)
+        setenv("TZ", "BRT3", 1);  // POSIX: UTC-3
+        tzset();
+
         struct timeval tv = { .tv_sec = unixtime, .tv_usec = 0 };
         settimeofday(&tv, nullptr);
 
         struct tm timeinfo;
-        getLocalTime(&timeinfo);
-        Serial.printf("Hora atual: %02d:%02d:%02d\n",
-                      timeinfo.tm_hour,
-                      timeinfo.tm_min,
-                      timeinfo.tm_sec);
+        if (getLocalTime(&timeinfo)) {
+            Serial.printf("Hora LOCAL: %02d:%02d:%02d\n",
+                          timeinfo.tm_hour,
+                          timeinfo.tm_min,
+                          timeinfo.tm_sec);
+        } else {
+            Serial.println("❌ Falha ao obter hora local");
+        }
+
         return true;
     } else {
         Serial.println("❌ Erro ao parsear JSON");

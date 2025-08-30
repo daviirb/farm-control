@@ -2,9 +2,9 @@
 
 ## RFs (Requsitos Funcionais)
 
-- [ ] O Usuário deve conseguir alterar a programação das portas logicas
-- [ ] O usuário deve conseguir adicionar novas portas
-- [ ] o usuário deve conseguir acionar uma porta independente do horario
+- [x] O Usuário deve conseguir alterar a programação das portas logicas
+- [x] O usuário deve conseguir adicionar novas portas
+- [x] o usuário deve conseguir acionar uma porta independente do horario
 - [ ] o usuário deve conseguir acompanhar o cumprimento das execuções durante o dia (histórico)
 
 ## RN (Regras de Negócio)
