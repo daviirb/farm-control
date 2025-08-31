@@ -9,14 +9,36 @@
 #define LED_PIN 2
 #define RELAY_PIN 26
 #define WATTER_RELAY 27
+#define BUTTON_PIN 0
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
   initLed(LED_PIN);
   initWiFi();
-  while (!updateTime()) {
-        Serial.println("⏳ Tentando atualizar horário novamente...");
-        delay(5000);
+
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    unsigned long start = millis();
+    bool ok = false;
+
+    while (!ok && millis() - start < 5000)
+    {
+      ok = updateTime();
+      if (!ok)
+      {
+        delay(200);
+      }
+    }
+
+    if (ok)
+    {
+      Serial.println("⏰ Hora atualizada com sucesso!");
+    }
+    else
+    {
+      Serial.println("⚠️ Falha ao atualizar hora após conectar WiFi");
+    }
   }
 
   setRelayPins(RELAY_PIN, WATTER_RELAY);
@@ -25,9 +47,14 @@ void setup() {
   initScheduleManager();
 }
 
-void loop() {
+void loop()
+{
   updateLed();
-  handleMQTTRelay();
-  handleRelayTimer();
-  handleScheduledRelays();
+  handleBootButtonFactoryReset();
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    handleMQTTRelay();
+    handleRelayTimer();
+    handleScheduledRelays();
+  }
 }

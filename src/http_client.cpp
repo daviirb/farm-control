@@ -6,12 +6,6 @@
 #include <led_status.h>
 
 bool updateTime() {
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("⚠️ Wi-Fi não conectado. Não é possível atualizar horário.");
-        setLedMode(LED_BLINK_FAIL);
-        return false;
-    }
-
     HTTPClient http;
     const char* url = "http://worldtimeapi.org/api/timezone/America/Sao_Paulo";
 
