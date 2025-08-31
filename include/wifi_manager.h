@@ -5,5 +5,6 @@
 #include "esp_wps.h"
 
 void initWiFi();
+void handleBootButtonFactoryReset();
 
 #endif
