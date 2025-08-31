@@ -87,32 +87,40 @@ static void callback(char *topic, byte *payload, unsigned int length)
 
     // ---- COMANDOS DIRETOS ----
     if (t == "farm/relay")
+{
+    StaticJsonDocument<256> doc;
+    DeserializationError error = deserializeJson(doc, msg);
+
+    if (error)
     {
-        StaticJsonDocument<256> doc;
-        DeserializationError error = deserializeJson(doc, msg);
-
-        if (error)
-        {
-            Serial.println("❌ Erro ao parsear JSON em farm/relay");
-            return;
-        }
-
-        int pin = doc["pin"];
-        String command = doc["command"];
-        unsigned long duration = doc["duration"] | 0;
-
-        Serial.printf("📥 Comando para Relay - Pin: %d, Command: %s, Duration: %lu\n",
-                      pin, command.c_str(), duration);
-
-        if (command.equalsIgnoreCase("ON") && duration > 0)
-        {
-            activateRelay(pin, duration);
-        }
-        else
-        {
-            digitalWrite(pin, command.equalsIgnoreCase("ON") ? HIGH : LOW);
-        }
+        Serial.print("❌ Erro ao parsear JSON em farm/relay: ");
+        Serial.println(error.c_str());
+        return;
     }
+
+    int pin = doc["pin"] | -1;
+    String command = doc["command"] | "";
+    unsigned long dur = doc["duration"] | 0;
+
+    if(pin < 0 || command == "") {
+        Serial.println("❌ Dados inválidos no JSON");
+        return;
+    }
+
+    Serial.printf("📥 Comando para Relay - Pin: %d, Command: %s, Duration: %lu\n",
+                  pin, command.c_str(), dur);
+
+    if (command.equalsIgnoreCase("ON") && dur > 0)
+    {
+        activateRelay(pin, dur);
+    }
+    else
+    {
+        digitalWrite(pin, command.equalsIgnoreCase("ON") ? HIGH : LOW);
+        Serial.printf("⚡ Relay %d definido como %s\n", pin, command.c_str());
+    }
+}
+
 
     // ---- AGENDAMENTOS (repasse ao schedule_manager) ----
     else if (t == "farm/schedule/add")
@@ -210,31 +218,33 @@ static void callback(char *topic, byte *payload, unsigned int length)
     }
 }
 
-// ======================================================
-// MQTT CORE
-// ======================================================
+static unsigned long lastReconnectAttempt = 0;
+
 static void reconnect()
 {
-    while (!client.connected())
+   if (!client.connected())
     {
-        Serial.print("🔌 Conectando ao MQTT...");
-        if (client.connect("ESP32Client"))
+        unsigned long now = millis();
+        if (now - lastReconnectAttempt > 5000)
         {
-            Serial.println("✅ Conectado!");
-            client.subscribe("farm/relay");
-            client.subscribe("farm/watter");
-            client.subscribe("farm/schedule/add");
-            client.subscribe("farm/schedule/clear");
-            client.subscribe("farm/schedule/list");
-            client.subscribe("farm/schedule/deleteById");
-            client.subscribe("farm/schedule/updateById");
-        }
-        else
-        {
-            Serial.print("Falha, rc=");
-            Serial.print(client.state());
-            Serial.println(" tentando novamente em 5s");
-            delay(5000);
+            lastReconnectAttempt = now;
+            Serial.print("🔌 Tentando reconectar MQTT...");
+            if (client.connect("ESP32Client"))
+            {
+                Serial.println("✅ Reconectado!");
+                client.subscribe("farm/relay");
+                client.subscribe("farm/watter");
+                client.subscribe("farm/schedule/add");
+                client.subscribe("farm/schedule/clear");
+                client.subscribe("farm/schedule/list");
+                client.subscribe("farm/schedule/deleteById");
+                client.subscribe("farm/schedule/updateById");
+            }
+            else
+            {
+                Serial.print("❌ Falha rc=");
+                Serial.println(client.state());
+            }
         }
     }
 }
