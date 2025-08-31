@@ -3,7 +3,7 @@
 
 // Estrutura do agendamento
 struct ScheduledRelay {
-    int id;
+    unsigned long id;
     int pin;
     int hour;
     int minute;
@@ -21,6 +21,8 @@ void initScheduleManager();
 void scheduleRelayAtTime(int pin, int hour, int minute, unsigned long duration);
 void clearSchedules();
 bool deleteScheduleById(int id);
+bool updateScheduleById(int id, int pin, int hour, int minute, unsigned long duration);
+
 void listSchedules();
 
 // Loop

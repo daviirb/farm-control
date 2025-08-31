@@ -86,19 +86,32 @@ static void callback(char *topic, byte *payload, unsigned int length)
     }
 
     // ---- COMANDOS DIRETOS ----
-    if (t == "farm/relay" && _relayPin >= 0)
+    if (t == "farm/relay")
     {
+        StaticJsonDocument<256> doc;
+        DeserializationError error = deserializeJson(doc, msg);
+
+        if (error)
+        {
+            Serial.println("❌ Erro ao parsear JSON em farm/relay");
+            return;
+        }
+
+        int pin = doc["pin"];
+        String command = doc["command"];
+        unsigned long duration = doc["duration"] | 0;
+
+        Serial.printf("📥 Comando para Relay - Pin: %d, Command: %s, Duration: %lu\n",
+                      pin, command.c_str(), duration);
+
         if (command.equalsIgnoreCase("ON") && duration > 0)
-            activateRelay(_relayPin, duration);
+        {
+            activateRelay(pin, duration);
+        }
         else
-            digitalWrite(_relayPin, command.equalsIgnoreCase("ON") ? HIGH : LOW);
-    }
-    else if (t == "farm/watter" && _watterRelay >= 0)
-    {
-        if (command.equalsIgnoreCase("ON") && duration > 0)
-            activateRelay(_watterRelay, duration);
-        else
-            digitalWrite(_watterRelay, command.equalsIgnoreCase("ON") ? HIGH : LOW);
+        {
+            digitalWrite(pin, command.equalsIgnoreCase("ON") ? HIGH : LOW);
+        }
     }
 
     // ---- AGENDAMENTOS (repasse ao schedule_manager) ----
@@ -145,6 +158,26 @@ static void callback(char *topic, byte *payload, unsigned int length)
         }
     }
 
+    else if (t == "farm/schedule/updateById")
+    {
+        StaticJsonDocument<200> doc;
+        DeserializationError error = deserializeJson(doc, msg);
+
+        if (error)
+        {
+            Serial.println("❌ JSON inválido para updateById");
+            return;
+        }
+
+        int id = doc["id"];
+        int pin = doc.containsKey("pin") ? doc["pin"] : -1;
+        int hour = doc.containsKey("hour") ? doc["hour"] : -1;
+        int minute = doc.containsKey("minute") ? doc["minute"] : -1;
+        long duration = doc.containsKey("duration") ? doc["duration"] : -1;
+
+        updateScheduleById(id, pin, hour, minute, duration);
+    }
+
     else if (t == "farm/schedule/list")
     {
         String response = "[";
@@ -169,6 +202,10 @@ static void callback(char *topic, byte *payload, unsigned int length)
             }
         }
         response += "]";
+
+        Serial.println("📋 Lista de agendamentos:");
+        Serial.println(response);
+
         client.publish("farm/schedule/list/response", response.c_str(), true);
     }
 }
@@ -190,6 +227,7 @@ static void reconnect()
             client.subscribe("farm/schedule/clear");
             client.subscribe("farm/schedule/list");
             client.subscribe("farm/schedule/deleteById");
+            client.subscribe("farm/schedule/updateById");
         }
         else
         {
@@ -206,6 +244,7 @@ void initMQTTRelay(const char *brokerIP, uint16_t port)
     _brokerIP = brokerIP;
     _brokerPort = port;
     client.setServer(_brokerIP, _brokerPort);
+    client.setBufferSize(1024);
     client.setCallback(callback);
 }
 

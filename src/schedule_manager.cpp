@@ -10,20 +10,21 @@ void initScheduleManager()
     prefs.begin("schedules", false);
     for (int i = 0; i < MAX_SCHEDULED_RELAYS; i++)
     {
-        scheduledRelays[i] = {-1, -1, -1, -1, 0, -1};
+        scheduledRelays[i] = {0, -1, -1, -1, 0, -1};
     }
     loadSchedules();
 }
-static int nextScheduleId = 1;
-void scheduleRelayAtTime(int pin, int hour, int minute, unsigned long duration)
-{
-    for (int i = 0; i < MAX_SCHEDULED_RELAYS; i++)
-    {
-        if (scheduledRelays[i].pin == -1)
-        {
-            scheduledRelays[i] = {nextScheduleId++, pin, hour, minute, duration, -1};
-            Serial.printf("⏱ Agendado: Relay %d às %02d:%02d por %lums\n",
-                          pin, hour, minute, duration);
+unsigned long generateUniqueId() {
+    static unsigned long counter = 0;
+    return millis() ^ ((unsigned long)random(1, 1000000)) ^ (++counter);
+}
+
+void scheduleRelayAtTime(int pin, int hour, int minute, unsigned long duration) {
+    for (int i = 0; i < MAX_SCHEDULED_RELAYS; i++) {
+        if (scheduledRelays[i].pin == -1) {
+            scheduledRelays[i] = { generateUniqueId(), pin, hour, minute, duration, -1 };
+            Serial.printf("⏱ Agendado: Relay %d às %02d:%02d por %lums (ID: %lu)\n",
+                          pin, hour, minute, duration, scheduledRelays[i].id);
             saveSchedules();
             return;
         }
@@ -35,7 +36,7 @@ void clearSchedules()
 {
     for (int i = 0; i < MAX_SCHEDULED_RELAYS; i++)
     {
-        scheduledRelays[i] = {-1, -1, -1, -1, 0, -1};
+        scheduledRelays[i] = {0, -1, -1, -1, 0, -1};
     }
     prefs.clear();
     Serial.println("🗑 Todos os agendamentos foram apagados");
@@ -121,12 +122,29 @@ void loadSchedules()
 bool deleteScheduleById(int id) {
     for (int i = 0; i < MAX_SCHEDULED_RELAYS; i++) {
         if (scheduledRelays[i].id == id) {
-            scheduledRelays[i] = { -1, -1, -1, 0, 0, -1 }; // Reset
+            scheduledRelays[i] = { 0, -1, -1, 0, 0, -1 };
             saveSchedules();  
             return true;
         }
     }
     return false;
 }
+
+bool updateScheduleById(int id, int pin, int hour, int minute, unsigned long duration) {
+    for (int i = 0; i < MAX_SCHEDULED_RELAYS; i++) {
+        if (scheduledRelays[i].id == id) {
+            scheduledRelays[i].pin = pin;
+            scheduledRelays[i].hour = hour;
+            scheduledRelays[i].minute = minute;
+            scheduledRelays[i].duration = duration;
+            saveSchedules();  
+            Serial.printf("✅ Agendamento ID %d atualizado\n", id);
+            return true;
+        }
+    }
+    Serial.printf("❌ Agendamento ID %d não encontrado\n", id);
+    return false;
+}
+
 
 
